@@ -431,48 +431,48 @@ class MedicationReminderApp {
     }
 
     loadMedications() {
-        try {
-            // 清空所有时间槽
-            const timeSlots = ['morning', 'noon', 'evening'];
-            timeSlots.forEach(timeSlot => {
-                const listElement = document.getElementById(`${timeSlot}-list`);
+    try {
+        // 清空所有时间槽
+        const timeSlots = ['morning', 'noon', 'evening'];
+        timeSlots.forEach(timeSlot => {
+            const listElement = document.getElementById(`${timeSlot}-list`);
+            if (listElement) {
+                listElement.innerHTML = '';
+            }
+        });
+        
+        // 获取所有用药提醒
+        const medications = this.storage.getAllMedications();
+        
+        // 将用药提醒分配到对应的时间槽
+        medications.forEach(med => {
+            // 为每个时间-时间段组合创建一个项目
+            med.times.forEach(timeEntry => {
+                const listElement = document.getElementById(`${timeEntry.timeSlot}-list`);
                 if (listElement) {
-                    listElement.innerHTML = '';
+                    const medElement = this.createMedicationElement(med, timeEntry); // 传递时间条目
+                    listElement.appendChild(medElement);
                 }
             });
-            
-            // 获取所有用药提醒
-            const medications = this.storage.getAllMedications();
-            
-            // 将用药提醒分配到对应的时间槽
-            medications.forEach(med => {
-                // 为每个时间-时间段组合创建一个项目
-                med.times.forEach(timeEntry => {
-                    const listElement = document.getElementById(`${timeEntry.timeSlot}-list`);
-                    if (listElement) {
-                        const medElement = this.createMedicationElement(med, timeEntry.time);
-                        listElement.appendChild(medElement);
-                    }
-                });
-            });
-            
-            // 如果某个时间槽没有用药提醒，显示空状态
-            timeSlots.forEach(timeSlot => {
-                const listElement = document.getElementById(`${timeSlot}-list`);
-                if (listElement && listElement.children.length === 0) {
-                    listElement.innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-prescription-bottle-alt"></i>
-                            <p>暂无${this.getTimeSlotText(timeSlot)}用药</p>
-                        </div>
-                    `;
-                }
-            });
-        } catch (error) {
-            console.error('加载用药提醒失败:', error);
-            this.showError('加载用药提醒时发生错误');
-        }
+        });
+        
+        // 如果某个时间槽没有用药提醒，显示空状态
+        timeSlots.forEach(timeSlot => {
+            const listElement = document.getElementById(`${timeSlot}-list`);
+            if (listElement && listElement.children.length === 0) {
+                listElement.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-prescription-bottle-alt"></i>
+                        <p>暂无${this.getTimeSlotText(timeSlot)}用药</p>
+                    </div>
+                `;
+            }
+        });
+    } catch (error) {
+        console.error('加载用药提醒失败:', error);
+        this.showError('加载用药提醒时发生错误');
     }
+}
 
     getTimeSlotText(timeSlot) {
         const timeSlotMap = {
@@ -483,50 +483,51 @@ class MedicationReminderApp {
         return timeSlotMap[timeSlot] || timeSlot;
     }
 
-    createMedicationElement(medication, specificTime = null) {
-        const div = document.createElement('div');
-        div.className = 'medication-item';
-        div.dataset.id = medication.id;
+    createMedicationElement(medication, timeEntry) {
+    const div = document.createElement('div');
+    div.className = 'medication-item';
+    // 使用 medication.id 和时间组合成唯一 ID
+    div.dataset.id = `${medication.id}_${timeEntry.time}_${timeEntry.timeSlot}`;
 
-        const frequencyText = this.getFrequencyText(medication);
-        const timeText = specificTime || medication.times[0].time;
+    const frequencyText = this.getFrequencyText(medication);
+    const timeText = timeEntry.time;
 
-        div.innerHTML = `
-            <div class="medication-info">
-                <h3>${this.escapeHtml(medication.name)}</h3>
-                <p><i class="fas fa-clock"></i> ${timeText} ${frequencyText}</p>
-                ${medication.notes ? `<p><i class="fas fa-sticky-note"></i> ${this.escapeHtml(medication.notes)}</p>` : ''}
-            </div>
-            <div class="medication-actions">
-                <button class="btn btn-secondary edit-btn" title="编辑">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-danger delete-btn" title="删除">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `;
+    div.innerHTML = `
+        <div class="medication-info">
+            <h3>${this.escapeHtml(medication.name)}</h3>
+            <p><i class="fas fa-clock"></i> ${timeText} ${frequencyText}</p>
+            ${medication.notes ? `<p><i class="fas fa-sticky-note"></i> ${this.escapeHtml(medication.notes)}</p>` : ''}
+        </div>
+        <div class="medication-actions">
+            <button class="btn btn-secondary edit-btn" title="编辑">
+                <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-danger delete-btn" title="删除">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
 
-        // 添加编辑事件监听
-        const editBtn = div.querySelector('.edit-btn');
-        if (editBtn) {
-            editBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.editMedication(medication.id);
-            });
-        }
-
-        // 添加删除事件监听
-        const deleteBtn = div.querySelector('.delete-btn');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.deleteMedication(medication.id);
-            });
-        }
-
-        return div;
+    // 添加编辑事件监听
+    const editBtn = div.querySelector('.edit-btn');
+    if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.editMedication(medication.id); // 传递完整的用药提醒 ID
+        });
     }
+
+    // 添加删除事件监听
+    const deleteBtn = div.querySelector('.delete-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.deleteMedication(medication.id); // 传递完整的用药提醒 ID
+        });
+    }
+
+    return div;
+}
 
     getFrequencyText(medication) {
         switch (medication.frequency) {
@@ -545,76 +546,76 @@ class MedicationReminderApp {
     }
 
     editMedication(id) {
-        try {
-            const medications = this.storage.getAllMedications();
-            const medication = medications.find(m => m.id === id);
+    try {
+        const medications = this.storage.getAllMedications();
+        const medication = medications.find(m => m.id === id);
+        
+        if (!medication) {
+            throw new Error('未找到指定的用药提醒');
+        }
+        
+        this.currentEditingId = id;
+        
+        // 填充表单
+        document.getElementById('medName').value = medication.name;
+        document.getElementById('medFrequency').value = medication.frequency;
+        document.getElementById('medNotes').value = medication.notes || '';
+        
+        // 填充时间输入
+        const timeContainer = document.getElementById('timeInputsContainer');
+        timeContainer.innerHTML = ''; // 清空现有时间输入
+        
+        // 添加时间输入
+        medication.times.forEach((timeEntry, index) => {
+            const timeGroup = document.createElement('div');
+            timeGroup.className = 'time-input-group';
+            timeGroup.innerHTML = `
+                <input type="time" class="med-time-input" value="${timeEntry.time}" required>
+                <select class="med-time-slot" required>
+                    <option value="morning" ${timeEntry.timeSlot === 'morning' ? 'selected' : ''}>早晨</option>
+                    <option value="noon" ${timeEntry.timeSlot === 'noon' ? 'selected' : ''}>中午</option>
+                    <option value="evening" ${timeEntry.timeSlot === 'evening' ? 'selected' : ''}>晚上</option>
+                </select>
+                <button type="button" class="btn btn-secondary remove-time-btn" title="删除时间">
+                    <i class="fas fa-minus"></i>
+                </button>
+            `;
+            timeContainer.appendChild(timeGroup);
             
-            if (!medication) {
-                throw new Error('未找到指定的用药提醒');
-            }
-            
-            this.currentEditingId = id;
-            
-            // 填充表单
-            document.getElementById('medName').value = medication.name;
-            document.getElementById('medFrequency').value = medication.frequency;
-            document.getElementById('medNotes').value = medication.notes || '';
-            
-            // 填充时间输入
-            const timeContainer = document.getElementById('timeInputsContainer');
-            timeContainer.innerHTML = ''; // 清空现有时间输入
-            
-            // 添加时间输入
-medication.times.forEach((timeEntry, index) => {
-    const timeGroup = document.createElement('div');
-    timeGroup.className = 'time-input-group';
-    timeGroup.innerHTML = `
-        <input type="time" class="med-time-input" value="${timeEntry.time}" required>
-        <select class="med-time-slot" required>
-            <option value="morning" ${timeEntry.timeSlot === 'morning' ? 'selected' : ''}>早晨</option>
-            <option value="noon" ${timeEntry.timeSlot === 'noon' ? 'selected' : ''}>中午</option>
-            <option value="evening" ${timeEntry.timeSlot === 'evening' ? 'selected' : ''}>晚上</option>
-        </select>
-        <button type="button" class="btn btn-secondary remove-time-btn" title="删除时间">
-            <i class="fas fa-minus"></i>
-        </button>
-    `;
-    timeContainer.appendChild(timeGroup);
-    
-    // 为删除按钮添加事件
-    const removeBtn = timeGroup.querySelector('.remove-time-btn');
-    if (removeBtn) {
-        removeBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // 防止事件冒泡
-            if (timeContainer.children.length > 1) { // 确保至少保留一个时间输入
-                timeContainer.removeChild(timeGroup);
-            } else {
-                // 如果只剩一个时间输入，则清空该输入而不是删除整个组
-                const inputs = timeGroup.querySelectorAll('input, select');
-                inputs.forEach(input => {
-                    if (input.tagName === 'INPUT') {
-                        input.value = '';
-                    } else if (input.tagName === 'SELECT') {
-                        input.selectedIndex = 0;
+            // 为删除按钮添加事件
+            const removeBtn = timeGroup.querySelector('.remove-time-btn');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 防止事件冒泡
+                    if (timeContainer.children.length > 1) { // 确保至少保留一个时间输入
+                        timeContainer.removeChild(timeGroup);
+                    } else {
+                        // 如果只剩一个时间输入，则清空该输入而不是删除整个组
+                        const inputs = timeGroup.querySelectorAll('input, select');
+                        inputs.forEach(input => {
+                            if (input.tagName === 'INPUT') {
+                                input.value = '';
+                            } else if (input.tagName === 'SELECT') {
+                                input.selectedIndex = 0;
+                            }
+                        });
                     }
                 });
             }
-        });  // ← 这里结束箭头函数
-    }  // ← 这里结束if语句
-});  // ← 这里结束forEach回调函数
-            
-            // 处理自定义间隔
-            if (medication.frequency === 'custom' && medication.customInterval) {
-                document.getElementById('customInterval').value = medication.customInterval;
-            }
-            
-            this.toggleCustomInterval(medication.frequency);
-            document.getElementById('addModal').style.display = 'flex';
-        } catch (error) {
-            console.error('编辑用药提醒失败:', error);
-            this.showError(error.message || '编辑用药提醒时发生错误');
+        });
+        
+        // 处理自定义间隔
+        if (medication.frequency === 'custom' && medication.customInterval) {
+            document.getElementById('customInterval').value = medication.customInterval;
         }
+        
+        this.toggleCustomInterval(medication.frequency);
+        document.getElementById('addModal').style.display = 'flex';
+    } catch (error) {
+        console.error('编辑用药提醒失败:', error);
+        this.showError(error.message || '编辑用药提醒时发生错误');
     }
+}
 
     deleteMedication(id) {
         try {
@@ -764,49 +765,49 @@ startReminderCheck() {
 
        // 修改 showReminderModal 方法，使其更适合移动设备
     showReminderModal(medication, isDelayed = false) {
-        try {
-            const contentElement = document.getElementById('reminderContent');
-            const frequencyText = this.getFrequencyText(medication);
-            
-            // 获取所有时间点
-            const times = medication.times.map(t => t.time).join(', ');
-            
-            if (contentElement) {
-                contentElement.innerHTML = `
-                    <div class="reminder-info">
-                        <h3>${this.escapeHtml(medication.name)}</h3>
-                        <p><i class="fas fa-clock"></i> 提醒时间：${times}</p>
-                        <p>${frequencyText}</p>
-                        ${medication.notes ? `<p><i class="fas fa-sticky-note"></i> ${this.escapeHtml(medication.notes)}</p>` : ''}
-                        ${isDelayed ? '<p style="color: var(--warning-color);"><i class="fas fa-clock"></i> 这是延迟提醒</p>' : ''}
-                    </div>
-                `;
-            }
-            
-            const modal = document.getElementById('reminderModal');
-            if (modal) {
-                modal.dataset.medicationId = medication.id;
-                modal.dataset.isDelayed = isDelayed.toString();
-                modal.style.display = 'flex';
-                
-                // 播放提醒音效
-                this.playReminderSound();
-                
-                // 震动提醒（如果支持）
-                if (navigator.vibrate) {
-                    navigator.vibrate([200, 100, 200]);
-                }
-                
-                // 自动聚焦到第一个按钮，便于快速操作
-                setTimeout(() => {
-                    const firstButton = document.querySelector('#reminderModal .modal-buttons button');
-                    if (firstButton) firstButton.focus();
-                }, 100);
-            }
-        } catch (error) {
-            console.error('显示提醒模态框失败:', error);
+    try {
+        const contentElement = document.getElementById('reminderContent');
+        const frequencyText = this.getFrequencyText(medication);
+        
+        // 获取所有时间点
+        const times = medication.times.map(t => t.time).join(', ');
+        
+        if (contentElement) {
+            contentElement.innerHTML = `
+                <div class="reminder-info">
+                    <h3>${this.escapeHtml(medication.name)}</h3>
+                    <p><i class="fas fa-clock"></i> 提醒时间：${times}</p>
+                    <p>${frequencyText}</p>
+                    ${medication.notes ? `<p><i class="fas fa-sticky-note"></i> ${this.escapeHtml(medication.notes)}</p>` : ''}
+                    ${isDelayed ? '<p style="color: var(--warning-color);"><i class="fas fa-clock"></i> 这是延迟提醒</p>' : ''}
+                </div>
+            `;
         }
+        
+        const modal = document.getElementById('reminderModal');
+        if (modal) {
+            modal.dataset.medicationId = medication.id;
+            modal.dataset.isDelayed = isDelayed.toString();
+            modal.style.display = 'flex';
+            
+            // 播放提醒音效
+            this.playReminderSound();
+            
+            // 震动提醒（如果支持）
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200]);
+            }
+            
+            // 自动聚焦到第一个按钮，便于快速操作
+            setTimeout(() => {
+                const firstButton = document.querySelector('#reminderModal .modal-buttons button');
+                if (firstButton) firstButton.focus();
+            }, 100);
+        }
+    } catch (error) {
+        console.error('显示提醒模态框失败:', error);
     }
+}
 
     // 在 playReminderSound 方法中添加震动
     playReminderSound() {
@@ -848,33 +849,34 @@ startReminderCheck() {
     }
 
     async confirmMedication() {
-        try {
-            const modal = document.getElementById('reminderModal');
-            if (!modal) return;
+    try {
+        const modal = document.getElementById('reminderModal');
+        if (!modal) return;
+        
+        const medicationId = modal.dataset.medicationId;
+        const isDelayed = modal.dataset.isDelayed === 'true';
+        
+        if (medicationId) {
+            // 记录用药行为 - 仅记录最终服药
+            this.storage.recordMedication(medicationId, 'taken');
             
-            const medicationId = modal.dataset.medicationId;
-            const isDelayed = modal.dataset.isDelayed === 'true';
-            
-            if (medicationId) {
-                // 记录用药行为 - 仅记录最终服药
-                this.storage.recordMedication(medicationId, 'taken');
-                
-                if (isDelayed) {
-                    this.storage.clearDelay(medicationId);
-                }
-                
-                this.hideReminderModal();
-                this.showSuccess('已确认服药');
+            if (isDelayed) {
+                this.storage.clearDelay(medicationId);
             }
-        } catch (error) {
-            console.error('确认服药失败:', error);
-            this.showError('确认服药时发生错误');
+            
+            this.hideReminderModal();
+            this.showSuccess('已确认服药');
         }
+    } catch (error) {
+        console.error('确认服药失败:', error);
+        this.showError('确认服药时发生错误');
     }
-
+}
     showDelayModal() {
         try {
+            // 隐藏提醒模态框
             this.hideReminderModal();
+            
             const modal = document.getElementById('delayModal');
             if (modal) {
                 modal.style.display = 'flex';
@@ -903,55 +905,105 @@ startReminderCheck() {
     }
 
     async setDelay() {
-        try {
-            const modal = document.getElementById('reminderModal');
-            const delayInput = document.getElementById('delayMinutes');
+    try {
+        const modal = document.getElementById('delayModal');
+        const delayInput = document.getElementById('delayMinutes');
+        
+        if (!modal || !delayInput) return;
+        
+        const medicationId = document.getElementById('reminderModal').dataset.medicationId;
+        const delayMinutes = parseInt(delayInput.value) || 5;
+        
+        if (medicationId) {
+            // 获取当前用药信息
+            const medications = this.storage.getAllMedications();
+            const medication = medications.find(m => m.id === medicationId);
             
-            if (!modal || !delayInput) return;
-            
-            const medicationId = modal.dataset.medicationId;
-            const delayMinutes = parseInt(delayInput.value) || 5;
-            
-            if (medicationId) {
-                // 获取当前用药信息
-                const medications = this.storage.getAllMedications();
-                const medication = medications.find(m => m.id === medicationId);
-                
-                if (medication) {
-                    // 设置延迟提醒
-                    this.storage.setDelay(medicationId, delayMinutes, new Date().toISOString());
-                    
-                    this.hideDelayModal();
-                    this.showSuccess(`将在${delayMinutes}分钟后再次提醒`);
-                }
-            }
-        } catch (error) {
-            console.error('设置延迟失败:', error);
-            this.showError('设置延迟时发生错误');
-        }
-    }
-
-    async cancelMedication() {
-        try {
-            const modal = document.getElementById('reminderModal');
-            if (!modal) return;
-            
-            const medicationId = modal.dataset.medicationId;
-            
-            if (medicationId) {
-                // 记录取消行为 - 仅记录取消
-                this.storage.recordMedication(medicationId, 'cancelled');
+            if (medication) {
+                // 设置延迟提醒
+                this.storage.setDelay(medicationId, delayMinutes, new Date().toISOString());
                 
                 this.hideDelayModal();
-                this.hideReminderModal();
-                this.showSuccess('已取消本次用药');
+                this.showSuccess(`将在${delayMinutes}分钟后再次提醒`);
             }
-        } catch (error) {
-            console.error('取消用药失败:', error);
-            this.showError('取消用药时发生错误');
         }
+    } catch (error) {
+        console.error('设置延迟失败:', error);
+        this.showError('设置延迟时发生错误');
     }
+}
 
+    // 添加显示延迟选项模态框的函数
+showDelayOptionsModal() {
+    // 创建延迟选项模态框
+    let delayOptionsModal = document.getElementById('delayOptionsModal');
+    
+    if (!delayOptionsModal) {
+        delayOptionsModal = document.createElement('div');
+        delayOptionsModal.id = 'delayOptionsModal';
+        delayOptionsModal.className = 'modal';
+        delayOptionsModal.innerHTML = `
+            <div class="modal-content">
+                <h2><i class="fas fa-clock"></i> 选择操作</h2>
+                <div class="modal-buttons">
+                    <button id="postponeBtn" class="btn btn-warning">
+                        <i class="fas fa-clock"></i> 延迟
+                    </button>
+                    <button id="skipBtn" class="btn btn-danger">
+                        <i class="fas fa-times"></i> 跳过
+                    </button>
+                    <button id="backToReminderBtn" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> 返回
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(delayOptionsModal);
+        
+        // 添加事件监听器
+        document.getElementById('postponeBtn').addEventListener('click', () => {
+            delayOptionsModal.style.display = 'none';
+            this.showDelayModal();
+        });
+        
+        document.getElementById('skipBtn').addEventListener('click', () => {
+            const modal = document.getElementById('reminderModal');
+            if (modal) {
+                const medicationId = modal.dataset.medicationId;
+                if (medicationId) {
+                    // 记录跳过行为
+                    this.storage.recordMedication(medicationId, 'skipped');
+                    this.storage.clearDelay(medicationId); // 清除可能存在的延迟
+                }
+            }
+            delayOptionsModal.style.display = 'none';
+            this.hideReminderModal();
+            this.showSuccess('已跳过本次用药');
+        });
+        
+        document.getElementById('backToReminderBtn').addEventListener('click', () => {
+            delayOptionsModal.style.display = 'none';
+            document.getElementById('reminderModal').style.display = 'flex';
+        });
+    }
+    
+    delayOptionsModal.style.display = 'flex';
+}
+    async cancelMedication() {
+    try {
+        const modal = document.getElementById('reminderModal');
+        if (!modal) return;
+        
+        // 隐藏当前提醒模态框
+        this.hideReminderModal();
+        
+        // 显示延迟选项模态框
+        this.showDelayOptionsModal();
+    } catch (error) {
+        console.error('取消用药失败:', error);
+        this.showError('取消用药时发生错误');
+    }
+}
     initAudioContext() {
         try {
             // 初始化音频上下文，用于播放音效
