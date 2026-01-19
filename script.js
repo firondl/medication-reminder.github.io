@@ -659,24 +659,33 @@ medication.times.forEach((timeEntry, index) => {
         }
     }
 
-    startReminderCheck() {
-        try {
-            // 清除之前的定时器
-            if (this.reminderCheckInterval) {
-                clearInterval(this.reminderCheckInterval);
-            }
-            
-            // 每分钟检查一次
-            this.reminderCheckInterval = setInterval(() => {
-                this.checkReminders();
-            }, 60000);
-            
-            // 立即检查一次
-            this.checkReminders();
-        } catch (error) {
-            console.error('启动提醒检查失败:', error);
+    // 在 MedicationReminderApp 类中添加页面可见性检测
+startReminderCheck() {
+    try {
+        // 清除之前的定时器
+        if (this.reminderCheckInterval) {
+            clearInterval(this.reminderCheckInterval);
         }
+        
+        // 每分钟检查一次
+        this.reminderCheckInterval = setInterval(() => {
+            this.checkReminders();
+        }, 60000);
+        
+        // 页面可见性变化时也检查
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                // 页面变为可见时立即检查
+                this.checkReminders();
+            }
+        });
+        
+        // 立即检查一次
+        this.checkReminders();
+    } catch (error) {
+        console.error('启动提醒检查失败:', error);
     }
+}
 
     checkReminders() {
         try {
