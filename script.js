@@ -522,7 +522,8 @@ class MedicationReminderApp {
     if (deleteBtn) {
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.deleteMedication(medication.id); // 传递完整的用药提醒 ID
+            // 传递特定时间点信息给删除函数
+            this.deleteMedication(medication.id, timeEntry.time, timeEntry.timeSlot);
         });
     }
 
@@ -617,8 +618,22 @@ class MedicationReminderApp {
     }
 }
 
-    deleteMedication(id) {
-        try {
+    // 替换 deleteMedication 方法
+deleteMedication(id, timeToRemove = null, timeSlotToRemove = null) {
+    try {
+        if (timeToRemove && timeSlotToRemove) {
+            // 删除特定时间点
+            if (confirm('确定要删除这个时间点的提醒吗？')) {
+                const success = this.storage.deleteMedicationTime(id, timeToRemove, timeSlotToRemove);
+                if (success) {
+                    this.loadMedications();
+                    this.showSuccess('时间点提醒已删除');
+                } else {
+                    throw new Error('删除时间点提醒失败');
+                }
+            }
+        } else {
+            // 删除整个用药提醒
             if (confirm('确定要删除这个用药提醒吗？此操作不可撤销。')) {
                 const success = this.storage.deleteMedication(id);
                 if (success) {
@@ -628,11 +643,13 @@ class MedicationReminderApp {
                     throw new Error('删除用药提醒失败');
                 }
             }
-        } catch (error) {
-            console.error('删除用药提醒失败:', error);
-            this.showError(error.message || '删除用药提醒时发生错误');
         }
+    } catch (error) {
+        console.error('删除用药提醒失败:', error);
+        this.showError(error.message || '删除用药提醒时发生错误');
     }
+}
+
 
     updateCurrentTime() {
         try {
@@ -1207,3 +1224,34 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.innerHTML = '<div style="padding: 20px; text-align: center;">应用加载失败，请打开控制台查看错误信息并刷新页面重试。</div>';
     }
 });
+
+/**
+ * 验证记录数据格式
+ * @param {Object} record - 记录对象
+ * @returns {boolean} 是否有效
+ */
+validateRecordData(record) {
+    try {
+        if (!record || typeof record !== 'object') {
+            throw new Error('记录数据必须是对象');
+        }
+        
+        const validActions = ['taken', 'cancelled', 'skipped']; // 添加 skipped 操作类型
+        if (!validActions.includes(record.action)) {
+            throw new Error('记录必须包含有效的动作 (taken, cancelled, skipped)');
+        }
+        
+        if (!record.medicationId || typeof record.medicationId !== 'string') {
+            throw new Error('记录必须包含有效的用药提醒ID');
+        }
+        
+        if (record.timestamp && !this.isValidTimestamp(record.timestamp)) {
+            throw new Error('记录必须包含有效的时间戳');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('验证记录数据失败:', error);
+        return false;
+    }
+}
