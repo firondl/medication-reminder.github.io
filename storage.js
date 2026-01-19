@@ -221,24 +221,37 @@ validateRecordData(record) {
      * @param {string} id - 用药提醒ID
      * @returns {boolean} 是否删除成功
      */
-    deleteMedication(id) {
-        try {
-            const medications = this.getAllMedications();
-            const filtered = medications.filter(m => m.id !== id);
-            
-            if (filtered.length !== medications.length) {
-                this.saveMedications(filtered);
-                // 同时删除相关的记录和延迟设置
-                this.deleteMedicationRecords(id);
-                this.clearDelay(id);
-                return true;
+    // 替换 deleteMedication 方法
+deleteMedication(id, timeToRemove = null, timeSlotToRemove = null) {
+    try {
+        if (timeToRemove && timeSlotToRemove) {
+            // 删除特定时间点
+            if (confirm('确定要删除这个时间点的提醒吗？')) {
+                const success = this.storage.deleteMedicationTime(id, timeToRemove, timeSlotToRemove);
+                if (success) {
+                    this.loadMedications();
+                    this.showSuccess('时间点提醒已删除');
+                } else {
+                    throw new Error('删除时间点提醒失败');
+                }
             }
-            return false;
-        } catch (error) {
-            console.error('删除用药提醒失败:', error);
-            return false;
+        } else {
+            // 删除整个用药提醒
+            if (confirm('确定要删除这个用药提醒吗？此操作不可撤销。')) {
+                const success = this.storage.deleteMedication(id);
+                if (success) {
+                    this.loadMedications();
+                    this.showSuccess('用药提醒已删除');
+                } else {
+                    throw new Error('删除用药提醒失败');
+                }
+            }
         }
+    } catch (error) {
+        console.error('删除用药提醒失败:', error);
+        this.showError(error.message || '删除用药提醒时发生错误');
     }
+}
 
     /**
      * 根据时间段获取用药提醒
@@ -956,3 +969,89 @@ setDelay(medicationId, delayMinutes, originalTime) {
 
 // 创建全局存储管理器实例
 const storage = new StorageManager();
+
+// 在 storage.js 中添加删除特定时间提醒的方法
+/**
+ * 删除特定用药提醒中的某个时间点
+ * @param {string} medicationId - 用药提醒ID
+ * @param {string} timeToRemove - 要删除的时间点（格式 HH:MM）
+ * @param {string} timeSlotToRemove - 要删除的时间段
+ * @returns {boolean} 是否删除成功
+ */
+deleteMedicationTime(medicationId, timeToRemove, timeSlotToRemove) {
+    try {
+        const medications = this.getAllMedications();
+        const medicationIndex = medications.findIndex(m => m.id === medicationId);
+        
+        if (medicationIndex === -1) {
+            return false;
+        }
+        
+        // 过滤掉要删除的时间点
+        const updatedMedication = { ...medications[medicationIndex] };
+        updatedMedication.times = updatedMedication.times.filter(timeEntry => 
+            !(timeEntry.time === timeToRemove && timeEntry.timeSlot === timeSlotToRemove)
+        );
+        
+        // 如果没有剩余时间点，删除整个用药提醒
+        if (updatedMedication.times.length === 0) {
+            medications.splice(medicationIndex, 1);
+        } else {
+            medications[medicationIndex] = updatedMedication;
+        }
+        
+        this.saveMedications(medications);
+        return true;
+    } catch (error) {
+        console.error('删除用药时间失败:', error);
+        return false;
+    }
+}
+
+// 更新 createMedicationElement 方法
+createMedicationElement(medication, timeEntry) {
+    const div = document.createElement('div');
+    div.className = 'medication-item';
+    // 使用 medication.id 和时间组合成唯一 ID
+    div.dataset.id = `${medication.id}_${timeEntry.time}_${timeEntry.timeSlot}`;
+
+    const frequencyText = this.getFrequencyText(medication);
+    const timeText = timeEntry.time;
+
+    div.innerHTML = `
+        <div class="medication-info">
+            <h3>${this.escapeHtml(medication.name)}</h3>
+            <p><i class="fas fa-clock"></i> ${timeText} ${frequencyText}</p>
+            ${medication.notes ? `<p><i class="fas fa-sticky-note"></i> ${this.escapeHtml(medication.notes)}</p>` : ''}
+        </div>
+        <div class="medication-actions">
+            <button class="btn btn-secondary edit-btn" title="编辑">
+                <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-danger delete-btn" title="删除">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+
+    // 添加编辑事件监听
+    const editBtn = div.querySelector('.edit-btn');
+    if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.editMedication(medication.id); // 传递完整的用药提醒 ID
+        });
+    }
+
+    // 添加删除事件监听
+    const deleteBtn = div.querySelector('.delete-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // 传递特定时间点信息给删除函数
+            this.deleteMedication(medication.id, timeEntry.time, timeEntry.timeSlot);
+        });
+    }
+
+    return div;
+}
