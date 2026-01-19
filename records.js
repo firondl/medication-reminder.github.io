@@ -104,86 +104,100 @@ class RecordsPage {
     }
 
     getFilteredRecords() {
-        let records = this.storage.getRecords();
-        const medications = this.storage.getAllMedications();
-        
-        // 将药品信息合并到记录中
-        records = records.map(record => {
-            const medication = medications.find(m => m.id === record.medicationId);
-            return {
-                ...record,
-                medicationName: medication ? medication.name : '未知药品',
-                medication: medication
-            };
-        });
+    let records = this.storage.getRecords();
+    const medications = this.storage.getAllMedications();
+    
+    // 将药品信息合并到记录中
+    records = records.map(record => {
+        const medication = medications.find(m => m.id === record.medicationId);
+        return {
+            ...record,
+            medicationName: medication ? medication.name : '未知药品',
+            medication: medication
+        };
+    });
 
-        // 应用筛选条件
-        return records.filter(record => {
-            const recordDate = record.timestamp.split('T')[0];
-            
-            // 日期筛选
-            if (this.currentFilters.startDate && recordDate < this.currentFilters.startDate) {
-                return false;
-            }
-            
-            if (this.currentFilters.endDate && recordDate > this.currentFilters.endDate) {
-                return false;
-            }
-            
-            // 药品筛选
-            if (this.currentFilters.medication && record.medicationId !== this.currentFilters.medication) {
-                return false;
-            }
-            
-            // 只显示taken和cancelled记录（排除delayed）
-            if (record.action === 'delayed') {
-                return false;
-            }
-            
-            return true;
-        });
-    }
+    // 应用筛选条件
+    return records.filter(record => {
+        const recordDate = record.timestamp.split('T')[0];
+        
+        // 日期筛选
+        if (this.currentFilters.startDate && recordDate < this.currentFilters.startDate) {
+            return false;
+        }
+        
+        if (this.currentFilters.endDate && recordDate > this.currentFilters.endDate) {
+            return false;
+        }
+        
+        // 药品筛选
+        if (this.currentFilters.medication && record.medicationId !== this.currentFilters.medication) {
+            return false;
+        }
+        
+        // 只显示taken、cancelled和skipped记录（排除delayed）
+        if (record.action === 'delayed') {
+            return false;
+        }
+        
+        return true;
+    });
+}
 
     displayRecords(records) {
-        const list = document.getElementById('recordsList');
-        
-        if (records.length === 0) {
-            list.innerHTML = `
-                <div class="no-records">
-                    <i class="fas fa-inbox"></i>
-                    <h3>暂无记录</h3>
-                    <p>没有找到匹配的用药记录</p>
-                </div>
-            `;
-            return;
-        }
-
-        // 按时间排序（最新的在前）
-        records.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        // 生成文本格式的记录清单
-        let html = '<div class="text-records">';
-        
-        records.forEach(record => {
-            const date = new Date(record.timestamp);
-            const dateStr = date.toLocaleDateString('zh-CN');
-            const timeStr = date.toLocaleTimeString('zh-CN');
-            
-            const actionText = record.action === 'taken' ? '服用' : '取消';
-            
-            html += `
-                <div class="text-record-item">
-                    <span class="record-date">${dateStr}</span>
-                    <span class="record-time">${timeStr}</span>
-                    <span class="record-medication">${record.medicationName}</span>
-                    <span class="record-action">${actionText}</span>
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-        list.innerHTML = html;
+    const list = document.getElementById('recordsList');
+    
+    if (records.length === 0) {
+        list.innerHTML = `
+            <div class="no-records">
+                <i class="fas fa-inbox"></i>
+                <h3>暂无记录</h3>
+                <p>没有找到匹配的用药记录</p>
+            </div>
+        `;
+        return;
     }
+
+    // 按时间排序（最新的在前）
+    records.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    // 生成文本格式的记录清单
+    let html = '<div class="text-records">';
+    
+    records.forEach(record => {
+        const date = new Date(record.timestamp);
+        const dateStr = date.toLocaleDateString('zh-CN');
+        const timeStr = date.toLocaleTimeString('zh-CN');
+        
+        // 根据操作类型显示不同的文本
+        let actionText = '';
+        switch (record.action) {
+            case 'taken':
+                actionText = '服用';
+                break;
+            case 'cancelled':
+                actionText = '取消';
+                break;
+            case 'skipped':
+                actionText = '跳过';
+                break;
+            default:
+                actionText = record.action;
+        }
+        
+        html += `
+            <div class="text-record-item">
+                <span class="record-date">${dateStr}</span>
+                <span class="record-time">${timeStr}</span>
+                <span class="record-medication">${record.medicationName}</span>
+                <span class="record-action">${actionText}</span>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    list.innerHTML = html;
+}
 
     clearFilters() {
         document.getElementById('startDate').value = '';
@@ -421,3 +435,34 @@ document.head.appendChild(style);
 document.addEventListener('DOMContentLoaded', () => {
     window.recordsPage = new RecordsPage();
 });
+
+/**
+ * 验证记录数据格式
+ * @param {Object} record - 记录对象
+ * @returns {boolean} 是否有效
+ */
+validateRecordData(record) {
+    try {
+        if (!record || typeof record !== 'object') {
+            throw new Error('记录数据必须是对象');
+        }
+        
+        const validActions = ['taken', 'cancelled', 'skipped']; // 添加 skipped 操作类型
+        if (!validActions.includes(record.action)) {
+            throw new Error('记录必须包含有效的动作 (taken, cancelled, skipped)');
+        }
+        
+        if (!record.medicationId || typeof record.medicationId !== 'string') {
+            throw new Error('记录必须包含有效的用药提醒ID');
+        }
+        
+        if (record.timestamp && !this.isValidTimestamp(record.timestamp)) {
+            throw new Error('记录必须包含有效的时间戳');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('验证记录数据失败:', error);
+        return false;
+    }
+}
