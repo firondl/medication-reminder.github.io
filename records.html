@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用药记录 - 用药提醒助手</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-history"></i> 用药记录</h1>
+            <div class="header-actions">
+                <a href="index.html" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回主页
+                </a>
+                <button id="exportBtn" class="btn btn-primary">
+                    <i class="fas fa-download"></i> 导出记录
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <!-- 筛选控件 -->
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="dateFilter"><i class="fas fa-calendar"></i> 日期范围：</label>
+                    <input type="date" id="startDate">
+                    <span>至</span>
+                    <input type="date" id="endDate">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="medicationFilter"><i class="fas fa-pills"></i> 药品：</label>
+                    <select id="medicationFilter">
+                        <option value="">所有药品</option>
+                    </select>
+                </div>
+                
+                <button id="applyFilters" class="btn btn-primary">
+                    <i class="fas fa-filter"></i> 应用筛选
+                </button>
+                <button id="clearFilters" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> 清除筛选
+                </button>
+            </div>
+
+            <!-- 记录列表 -->
+            <div class="records-container">
+                <div class="records-header">
+                    <h2><i class="fas fa-list"></i> 用药记录清单</h2>
+                    <div class="records-actions">
+                        <button id="deleteAllBtn" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> 清空所有记录
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="records-list" id="recordsList">
+                    <!-- 记录将通过JavaScript动态加载 -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 确认删除对话框 -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-exclamation-triangle"></i> 确认删除</h2>
+            <p>确定要删除所有用药记录吗？此操作不可撤销。</p>
+            <div class="modal-buttons">
+                <button id="confirmDeleteBtn" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> 确认删除
+                </button>
+                <button id="cancelDeleteBtn" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> 取消
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="storage.js"></script>
+    <script src="records.js"></script>
+</body>
+</html>

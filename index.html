@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>用药提醒助手</title>
+    
+    <!-- PWA 支持 -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" sizes="192x192" href="icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192x192.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="用药提醒">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4a6fa5">
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-pills"></i> 用药提醒助手</h1>
+            <div class="current-time" id="currentTime"></div>
+        </header>
+
+        <main>
+            <div class="time-sections">
+                <section class="time-section">
+                    <h2><i class="fas fa-sun"></i> 早晨</h2>
+                    <div class="medication-list" id="morning-list">
+                        <!-- 用药提醒将通过JavaScript动态加载 -->
+                    </div>
+                </section>
+
+                <section class="time-section">
+                    <h2><i class="fas fa-cloud-sun"></i> 中午</h2>
+                    <div class="medication-list" id="noon-list">
+                        <!-- 用药提醒将通过JavaScript动态加载 -->
+                    </div>
+                </section>
+
+                <section class="time-section">
+                    <h2><i class="fas fa-moon"></i> 晚上</h2>
+                    <div class="medication-list" id="evening-list">
+                        <!-- 用药提醒将通过JavaScript动态加载 -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- 通用添加用药按钮 -->
+            <button id="addMedicationBtn" class="add-btn">
+                <i class="fas fa-plus"></i> 添加用药提醒
+            </button>
+        </main>
+
+        <footer>
+            <a href="records.html" class="records-link">
+                <i class="fas fa-history"></i> 查看用药记录
+            </a>
+        </footer>
+    </div>
+
+    <!-- 添加用药的模态框 -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-capsules"></i> 添加用药提醒</h2>
+            <form id="medicationForm">
+                <div class="form-group">
+                    <label for="medName"><i class="fas fa-prescription-bottle"></i> 药品名称</label>
+                    <input type="text" id="medName" required placeholder="例如：阿司匹林">
+                </div>
+
+                <!-- 多个提醒时间设置 -->
+                <div class="form-group">
+                    <label><i class="fas fa-clock"></i> 提醒时间与时间段</label>
+                    <div id="timeInputsContainer">
+                        <div class="time-input-group">
+                            <input type="time" class="med-time-input" required placeholder="时间">
+                            <select class="med-time-slot" required>
+                                <option value="morning">早晨</option>
+                                <option value="noon">中午</option>
+                                <option value="evening">晚上</option>
+                            </select>
+                            <button type="button" class="btn btn-secondary remove-time-btn" title="删除时间" disabled style="opacity: 0.5; cursor: not-allowed;">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" id="addTimeBtn" class="btn btn-secondary">
+                        <i class="fas fa-plus"></i> 添加更多时间
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label for="medFrequency"><i class="fas fa-redo"></i> 提醒频次</label>
+                    <select id="medFrequency" required>
+                        <option value="once">单次提醒</option>
+                        <option value="daily" selected>每天</option>
+                        <option value="weekly">每周</option>
+                        <option value="custom">自定义间隔</option>
+                    </select>
+                </div>
+
+                <!-- 自定义间隔输入（默认隐藏） -->
+                <div class="form-group" id="customIntervalGroup" style="display: none;">
+                    <label for="customInterval"><i class="fas fa-calendar-alt"></i> 间隔天数</label>
+                    <input type="number" id="customInterval" min="1" value="1" placeholder="天数">
+                </div>
+
+                <div class="form-group">
+                    <label for="medNotes"><i class="fas fa-sticky-note"></i> 备注（可选）</label>
+                    <textarea id="medNotes" rows="3" placeholder="服用说明、剂量等"></textarea>
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> 保存提醒
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">
+                        <i class="fas fa-times"></i> 取消
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 提醒模态框 -->
+    <div id="reminderModal" class="modal reminder-modal">
+        <div class="modal-content">
+            <div id="reminderContent">
+                <!-- 内容将通过JavaScript动态加载 -->
+            </div>
+            <div class="modal-buttons">
+                <button id="confirmBtn" class="btn btn-success">
+                    <i class="fas fa-check"></i> 已服用
+                </button>
+                <button id="delayBtn" class="btn btn-warning">
+                    <i class="fas fa-clock"></i> 延迟
+                </button>
+                <button id="cancelMedBtn" class="btn btn-danger">
+                    <i class="fas fa-times"></i> 取消
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 延迟设置模态框 -->
+    <div id="delayModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-clock"></i> 设置延迟提醒</h2>
+            <div class="form-group">
+                <label for="delayMinutes"><i class="fas fa-hourglass-half"></i> 延迟分钟数</label>
+                <input type="number" id="delayMinutes" min="1" value="5" placeholder="分钟">
+            </div>
+            <div class="modal-buttons">
+                <button id="setDelayBtn" class="btn btn-primary">
+                    <i class="fas fa-bell"></i> 设置延迟
+                </button>
+                <button id="closeDelayBtn" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> 取消
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="storage.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
